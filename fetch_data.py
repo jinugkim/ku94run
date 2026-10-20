@@ -16,6 +16,7 @@ import requests
 DATA_DIR = Path("data")
 SHEET_ID_PATTERN = re.compile(r"/spreadsheets/d/([a-zA-Z0-9-_]+)")
 DISPATCH_EVENT_TYPE = "ku94_run_daily_report"
+WEEKDAY_HEADERS = {"월", "화", "수", "목", "금", "토", "일"}
 
 
 def summarize_records(records: list[dict]) -> str:
@@ -24,15 +25,17 @@ def summarize_records(records: list[dict]) -> str:
         for row in records
         if str(row.get("이름", "")).strip() and _run_count(row) > 0
     ]
-    runners.sort(key=_run_count, reverse=True)
+    runners.sort(key=_ranking_key)
 
     lines = ["🏃 KU94 RUN 100일 챌린지 오늘의 기록"]
     if runners:
         lines.append("오늘의 TOP 3")
         medals = ("🥇", "🥈", "🥉")
         for rank, runner in enumerate(runners[:3]):
+            finish_day = runner.get("완주일차")
+            finish_note = f" · {finish_day}일차 완주" if finish_day else ""
             lines.append(
-                f"{medals[rank]} {str(runner['이름']).strip()} · {_run_count(runner)}회"
+                f"{medals[rank]} {str(runner['이름']).strip()} · {_run_count(runner)}회{finish_note}"
             )
     else:
         lines.append("아직 기록이 없습니다.")
@@ -45,13 +48,40 @@ def summarize_records(records: list[dict]) -> str:
 def _run_count(record: dict) -> float:
     try:
         value = record.get("달리기 횟수 ", record.get("달리기 횟수", 0))
-        return float(value or 0)
+        return min(100, max(0, float(value or 0)))
     except (TypeError, ValueError):
         return 0
 
 
+def _rest_count(record: dict) -> float:
+    try:
+        return max(0, float(record.get("휴식 횟수", 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _ranking_key(record: dict) -> tuple:
+    runs = _run_count(record)
+    if runs >= 100:
+        finish_day = record.get("완주일차")
+        return (0, finish_day if finish_day is not None else float("inf"), _rest_count(record))
+    return (1, -runs, _rest_count(record))
+
+
+def _is_run_mark(value) -> bool:
+    text = str(value or "").strip()
+    if not text or text.lower() in {"x", "×", "휴식", "-", "0", "n", "no"}:
+        return False
+    if text.upper() in {"O", "○", "⭕", "✓", "✔", "✅", "Y", "YES", "RUN"}:
+        return True
+    try:
+        return float(text.replace(",", "")) > 0
+    except ValueError:
+        return bool(re.fullmatch(r"\d+(?:\.\d+)?\s*(?:km|키로|킬로)", text, re.IGNORECASE))
+
+
 def read_sheet_records(worksheet) -> list[dict]:
-    """Find the actual table header, then read records with unique column names."""
+    """Preserve repeated weekday columns so each challenge day stays in order."""
     values = worksheet.get_all_values()
     header_row_number = None
     raw_headers = None
@@ -69,21 +99,58 @@ def read_sheet_records(worksheet) -> list[dict]:
             "첫 번째 시트에서 '이름'과 '달리기 횟수'가 있는 헤더 행을 찾지 못했습니다."
         )
 
-    # gspread requires expected_headers to be unique names already present in
-    # the sheet. Repeated weekday and blank columns are ignored here; relevant
-    # fields such as 이름, 달리기 횟수, and 휴식 횟수 remain available.
-    expected_headers = list(
-        dict.fromkeys(
-            str(header)
-            for header in raw_headers
-            if str(header).strip()
-        )
-    )
+    # get_all_records() collapses repeated weekday headers into one dictionary
+    # key. Keep each of the 107 daily columns under its own ordered key instead.
+    record_headers = []
+    day_number = 0
+    header_counts = {}
+    for column_number, raw_header in enumerate(raw_headers, start=1):
+        header = str(raw_header).strip()
+        if header in WEEKDAY_HEADERS:
+            day_number += 1
+            record_headers.append(f"챌린지 {day_number}일")
+            continue
+        if header.replace(" ", "") == "달리기횟수":
+            header = "달리기 횟수 "
+        elif header == "이름":
+            header = "이름"
+        elif header == "휴식횟수":
+            header = "휴식 횟수"
+        if not header:
+            header = f"column_{column_number}"
+        count = header_counts.get(header, 0) + 1
+        header_counts[header] = count
+        record_headers.append(header if count == 1 else f"{header}_{count}")
 
-    return worksheet.get_all_records(
-        head=header_row_number,
-        expected_headers=expected_headers,
-    )
+    records = []
+    for row in values[header_row_number:]:
+        padded_row = row + [""] * max(0, len(record_headers) - len(row))
+        records.append(dict(zip(record_headers, padded_row)))
+
+    for record in records:
+        raw_run_count = _run_count(record)
+        daily_keys = sorted(
+            (key for key in record if key.startswith("챌린지 ") and key.endswith("일")),
+            key=lambda key: int(key.split()[1][:-1]),
+        )
+        marked_run_count = 0
+        finish_day = None
+        for day_index, key in enumerate(daily_keys, start=1):
+            if _is_run_mark(record.get(key)):
+                marked_run_count += 1
+                if marked_run_count == 100:
+                    finish_day = day_index
+                    break
+
+        capped_run_count = min(100, max(raw_run_count, marked_run_count))
+        capped_run_count = float(capped_run_count)
+        record["달리기 횟수 "] = int(capped_run_count) if capped_run_count.is_integer() else capped_run_count
+        record["완주일차"] = finish_day
+        if capped_run_count >= 100 and finish_day is not None:
+            # A completed runner's rest allowance is frozen on their 100th run.
+            record["휴식 횟수"] = max(0, finish_day - 100)
+
+    return records
 
 
 def dispatch_kakao_message(message: str) -> None:

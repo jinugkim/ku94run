@@ -109,10 +109,26 @@
     }
 
     function renderRunners(records) {
-      const runCount = row => Number(row['달리기 횟수 '] ?? row['달리기 횟수'] ?? 0);
+      const runCount = row => Math.min(100, Math.max(0, Number(row['달리기 횟수 '] ?? row['달리기 횟수'] ?? 0)));
+      const restCount = row => Math.max(0, Number(row['휴식 횟수'] ?? 0) || 0);
+      const finishDay = row => row['완주일차'] == null || row['완주일차'] === '' ? null : Number(row['완주일차']);
+      const ranking = (a, b) => {
+        const aFinished = runCount(a) >= 100;
+        const bFinished = runCount(b) >= 100;
+        if (aFinished !== bFinished) return aFinished ? -1 : 1;
+        if (aFinished && bFinished) {
+          const aDay = finishDay(a);
+          const bDay = finishDay(b);
+          if (aDay != null && bDay != null && aDay !== bDay) return aDay - bDay;
+          if (aDay != null && bDay == null) return -1;
+          if (aDay == null && bDay != null) return 1;
+          return restCount(a) - restCount(b);
+        }
+        return runCount(b) - runCount(a) || restCount(a) - restCount(b);
+      };
       const runners = records
         .filter(row => String(row['이름'] ?? '').trim() && runCount(row) > 0)
-        .sort((a, b) => runCount(b) - runCount(a));
+        .sort(ranking);
       count.textContent = `${runners.length}명`;
       if (!runners.length) {
         showMessage('아직 표시할 기록이 없습니다.');
@@ -139,11 +155,14 @@
           trophy.setAttribute('aria-label', '100회 이상 완주');
           name.append(trophy);
         }
-        const restCount = Number(runner['휴식 횟수'] ?? 0) || 0;
-        const remainingRest = 7 - restCount;
+        const usedRest = restCount(runner);
+        const remainingRest = 7 - usedRest;
         const rest = document.createElement('span');
         rest.className = `rest-days${remainingRest < 0 ? ' over-limit' : ''}`;
-        rest.textContent = `잔여 휴식권: ${remainingRest}회`;
+        const completedDay = finishDay(runner);
+        rest.textContent = runCount(runner) >= 100
+          ? `100회 완주${completedDay == null ? '' : ` · 챌린지 ${completedDay}일차`} · 잔여 휴식권: ${remainingRest}회`
+          : `잔여 휴식권: ${remainingRest}회`;
         info.append(name, rest);
         const score = document.createElement('span');
         score.className = 'runs';

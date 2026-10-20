@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import traceback
 from pathlib import Path
 
 import gspread
@@ -141,5 +142,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as error:
-        print(f"Error: {error}", file=sys.stderr)
+        print(f"Error: {type(error).__name__}: {error!r}", file=sys.stderr)
+        traceback.print_exc()
         sys.exit(1)

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f3">
+  <title>KU94 RUN · 100일 챌린지</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17251d;
+      --muted: #758078;
+      --green: #1f6849;
+      --green-dark: #164b35;
+      --line: #e7ebe5;
+      --paper: #fff;
+      --bg: #f5f7f3;
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--bg); min-height: 100vh; }
+    .topbar { height: 66px; display: flex; align-items: center; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.86); }
+    .topbar-inner { width: min(100% - 40px, 920px); margin: auto; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; gap: 10px; align-items: center; font-size: 14px; font-weight: 800; letter-spacing: .08em; }
+    .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--green); color: white; font-size: 16px; }
+    .brand-note { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+    main { width: min(100% - 40px, 760px); margin: 58px auto 80px; }
+    .eyebrow { margin: 0 0 12px; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .16em; }
+    h1 { margin: 0; font-size: clamp(32px, 7vw, 48px); letter-spacing: -.055em; line-height: 1.12; }
+    .intro { margin: 14px 0 24px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .rules { margin: 0 0 28px; padding: 18px 20px; border: 1px solid #dce8df; border-radius: 14px; background: #edf4ee; }
+    .rules h2 { margin: 0 0 8px; color: var(--green-dark); font-size: 14px; }
+    .rules p { margin: 0; color: #526258; font-size: 13px; line-height: 1.7; }
+    .year-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 16px; scrollbar-width: none; }
+    .year-tabs::-webkit-scrollbar { display: none; }
+    .year-tab { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; color: #606b63; background: var(--paper); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: .18s ease; }
+    .year-tab:hover { border-color: #a9c5b4; }
+    .year-tab[aria-selected="true"] { color: white; background: var(--green); border-color: var(--green); }
+    .board { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: 0 12px 34px rgba(25,50,35,.045); }
+    .board-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+    .board-title { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+    .count { color: var(--muted); font-size: 13px; }
+    .list { list-style: none; padding: 0; margin: 0; }
+    .runner { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; min-height: 72px; padding: 0 24px; border-bottom: 1px solid #f0f2ef; }
+    .runner:last-child { border-bottom: 0; }
+    .rank { color: #929b94; font-size: 14px; font-weight: 700; }
+    .runner:nth-child(-n+3) .rank { font-size: 18px; }
+    .runner-info { min-width: 0; }
+    .name { font-size: 15px; font-weight: 700; }
+    .trophy { margin-left: 5px; }
+    .rest-days { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; font-weight: 500; }
+    .rest-days.over-limit { color: #c43b36; font-weight: 700; }
+    .runs { color: var(--green-dark); font-size: 15px; font-weight: 800; white-space: nowrap; }
+    .runs small { margin-left: 3px; color: var(--muted); font-size: 12px; font-weight: 500; }
+    .state { padding: 44px 20px; color: var(--muted); text-align: center; font-size: 14px; }
+    .footer { margin: 18px 4px 0; color: #8b948d; text-align: center; font-size: 12px; }
+    @media (max-width: 520px) {
+      .topbar { height: 58px; }
+      .topbar-inner, main { width: min(100% - 32px, 760px); }
+      main { margin-top: 38px; }
+      .brand-note { display: none; }
+      .intro { margin-bottom: 24px; font-size: 14px; }
+      .board { border-radius: 15px; }
+      .board-head { padding: 19px 18px; }
+      .runner { min-height: 66px; padding: 0 18px; grid-template-columns: 36px 1fr auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">↗</span><span>KU94 RUN</span></div>
+      <span class="brand-note">고려대학교 94학번 러닝 모임</span>
+    </div>
+  </header>
+  <main>
+    <p class="eyebrow">100 DAYS RUNNING CHALLENGE</p>
+    <h1>함께 달린<br>우리의 기록</h1>
+    <p class="intro">매일의 한 걸음이 모여 만든 기록을 확인해 보세요.</p>
+    <section class="rules" aria-labelledby="rules-title">
+      <h2 id="rules-title">📜 챌린지 공식 룰</h2>
+      <p>기간 내 1일 4km 이상, 페이스 9분/km 미만 달리기 100회 이상 / 최대 7회 자유 휴식 허용 / 공식 트레일러닝 대회 기록 인정</p>
+    </section>
+    <nav class="year-tabs" id="year-tabs" aria-label="챌린지 연도"></nav>
+    <section class="board" aria-live="polite" aria-busy="false">
+      <div class="board-head">
+        <h2 class="board-title" id="board-title">참여자 랭킹</h2>
+        <span class="count" id="runner-count"></span>
+      </div>
+      <div id="content"><p class="state">기록을 불러오는 중입니다…</p></div>
+    </section>
+    <p class="footer">KU94 RUN · 100일 챌린지 아카이브</p>
+  </main>
+  <script>
+    const tabs = document.querySelector('#year-tabs');
+    const content = document.querySelector('#content');
+    const board = document.querySelector('.board');
+    const count = document.querySelector('#runner-count');
+    const title = document.querySelector('#board-title');
+    const medals = ['🥇', '🥈', '🥉'];
+
+    function showMessage(message) {
+      content.replaceChildren();
+      const p = document.createElement('p');
+      p.className = 'state';
+      p.textContent = message;
+      content.append(p);
+      count.textContent = '';
+    }
+
+    function renderRunners(records) {
+      const runners = records
+        .filter(row => String(row['이름'] ?? '').trim() && Number(row['달리기 횟수 '] ?? 0) > 0)
+        .sort((a, b) => Number(b['달리기 횟수 ']) - Number(a['달리기 횟수 ']));
+      count.textContent = `${runners.length}명`;
+      if (!runners.length) {
+        showMessage('아직 표시할 기록이 없습니다.');
+        return;
+      }
+      const list = document.createElement('ol');
+      list.className = 'list';
+      runners.forEach((runner, index) => {
+        const item = document.createElement('li');
+        item.className = 'runner';
+        const rank = document.createElement('span');
+        rank.className = 'rank';
+        rank.textContent = medals[index] || String(index + 1);
+        const info = document.createElement('div');
+        info.className = 'runner-info';
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = String(runner['이름']).trim();
+        const runs = Number(runner['달리기 횟수 ']);
+        if (runs >= 100) {
+          const trophy = document.createElement('span');
+          trophy.className = 'trophy';
+          trophy.textContent = '🏆';
+          trophy.setAttribute('aria-label', '100회 이상 완주');
+          name.append(trophy);
+        }
+        const restCount = Number(runner['휴식 횟수'] ?? 0) || 0;
+        const remainingRest = 7 - restCount;
+        const rest = document.createElement('span');
+        rest.className = `rest-days${remainingRest < 0 ? ' over-limit' : ''}`;
+        rest.textContent = `잔여 휴식권: ${remainingRest}회`;
+        info.append(name, rest);
+        const score = document.createElement('span');
+        score.className = 'runs';
+        score.append(document.createTextNode(String(runs)));
+        const unit = document.createElement('small');
+        unit.textContent = '회';
+        score.append(unit);
+        item.append(rank, info, score);
+        list.append(item);
+      });
+      content.replaceChildren(list);
+    }
+
+    async function loadYear(year, selectedButton) {
+      tabs.querySelectorAll('button').forEach(button => button.setAttribute('aria-selected', String(button === selectedButton)));
+      title.textContent = `${year} 참여자 랭킹`;
+      board.setAttribute('aria-busy', 'true');
+      showMessage('기록을 불러오는 중입니다…');
+      try {
+        const response = await fetch(`data/${encodeURIComponent(year)}.json`);
+        if (!response.ok) throw new Error('데이터 파일을 찾을 수 없습니다.');
+        const records = await response.json();
+        if (!Array.isArray(records)) throw new Error('데이터 형식이 올바르지 않습니다.');
+        renderRunners(records);
+      } catch (error) {
+        showMessage(error.message || '기록을 불러오지 못했습니다.');
+      } finally {
+        board.setAttribute('aria-busy', 'false');
+      }
+    }
+
+    async function init() {
+      try {
+        const response = await fetch('data/meta.json');
+        if (!response.ok) throw new Error('연도별 기록을 찾을 수 없습니다.');
+        const meta = await response.json();
+        const years = [...new Set((meta.years || []).map(String))].sort((a, b) => Number(b) - Number(a));
+        if (!years.length) throw new Error('아직 등록된 챌린지 기록이 없습니다.');
+        const buttons = years.map(year => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'year-tab';
+          button.textContent = year;
+          button.setAttribute('aria-selected', 'false');
+          button.addEventListener('click', () => loadYear(year, button));
+          tabs.append(button);
+          return button;
+        });
+        await loadYear(years[0], buttons[0]);
+      } catch (error) {
+        showMessage(error.message || '기록을 불러오지 못했습니다.');
+      }
+    }
+    init();
+  </script>
+</body>
+</html>

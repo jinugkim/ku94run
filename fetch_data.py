@@ -44,9 +44,45 @@ def summarize_records(records: list[dict]) -> str:
 
 def _run_count(record: dict) -> float:
     try:
-        return float(record.get("달리기 횟수 ", 0) or 0)
+        value = record.get("달리기 횟수 ", record.get("달리기 횟수", 0))
+        return float(value or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def read_sheet_records(worksheet) -> list[dict]:
+    """Find the actual table header, then read records with unique column names."""
+    values = worksheet.get_all_values()
+    header_row_number = None
+    raw_headers = None
+    for row_number, row in enumerate(values, start=1):
+        normalized = {str(cell).strip() for cell in row if str(cell).strip()}
+        if "이름" in normalized and any(
+            header.replace(" ", "") == "달리기횟수" for header in normalized
+        ):
+            header_row_number = row_number
+            raw_headers = row
+            break
+
+    if header_row_number is None or raw_headers is None:
+        raise ValueError(
+            "첫 번째 시트에서 '이름'과 '달리기 횟수'가 있는 헤더 행을 찾지 못했습니다."
+        )
+
+    expected_headers = []
+    header_counts = {}
+    for column_number, raw_header in enumerate(raw_headers, start=1):
+        header = str(raw_header).strip() or f"column_{column_number}"
+        count = header_counts.get(header, 0) + 1
+        header_counts[header] = count
+        if count > 1:
+            header = f"{header}_{count}"
+        expected_headers.append(header)
+
+    return worksheet.get_all_records(
+        head=header_row_number,
+        expected_headers=expected_headers,
+    )
 
 
 def dispatch_kakao_message(message: str) -> None:
@@ -109,7 +145,8 @@ def main() -> None:
 
     client = gspread.service_account_from_dict(credentials)
     spreadsheet = client.open_by_key(sheet_match.group(1))
-    records = spreadsheet.get_worksheet(0).get_all_records()
+    worksheet = spreadsheet.get_worksheet(0)
+    records = read_sheet_records(worksheet)
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     (DATA_DIR / f"{year}.json").write_text(

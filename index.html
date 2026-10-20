@@ -109,9 +109,10 @@
     }
 
     function renderRunners(records) {
+      const runCount = row => Number(row['달리기 횟수 '] ?? row['달리기 횟수'] ?? 0);
       const runners = records
-        .filter(row => String(row['이름'] ?? '').trim() && Number(row['달리기 횟수 '] ?? 0) > 0)
-        .sort((a, b) => Number(b['달리기 횟수 ']) - Number(a['달리기 횟수 ']));
+        .filter(row => String(row['이름'] ?? '').trim() && runCount(row) > 0)
+        .sort((a, b) => runCount(b) - runCount(a));
       count.textContent = `${runners.length}명`;
       if (!runners.length) {
         showMessage('아직 표시할 기록이 없습니다.');
@@ -130,7 +131,7 @@
         const name = document.createElement('span');
         name.className = 'name';
         name.textContent = String(runner['이름']).trim();
-        const runs = Number(runner['달리기 횟수 ']);
+        const runs = runCount(runner);
         if (runs >= 100) {
           const trophy = document.createElement('span');
           trophy.className = 'trophy';

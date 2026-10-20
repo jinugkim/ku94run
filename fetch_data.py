@@ -69,15 +69,16 @@ def read_sheet_records(worksheet) -> list[dict]:
             "첫 번째 시트에서 '이름'과 '달리기 횟수'가 있는 헤더 행을 찾지 못했습니다."
         )
 
-    expected_headers = []
-    header_counts = {}
-    for column_number, raw_header in enumerate(raw_headers, start=1):
-        header = str(raw_header).strip() or f"column_{column_number}"
-        count = header_counts.get(header, 0) + 1
-        header_counts[header] = count
-        if count > 1:
-            header = f"{header}_{count}"
-        expected_headers.append(header)
+    # gspread requires expected_headers to be unique names already present in
+    # the sheet. Repeated weekday and blank columns are ignored here; relevant
+    # fields such as 이름, 달리기 횟수, and 휴식 횟수 remain available.
+    expected_headers = list(
+        dict.fromkeys(
+            str(header)
+            for header in raw_headers
+            if str(header).strip()
+        )
+    )
 
     return worksheet.get_all_records(
         head=header_row_number,

@@ -25,13 +25,14 @@ def summarize_records(records: list[dict]) -> str:
         for row in records
         if str(row.get("이름", "")).strip() and _run_count(row) > 0
     ]
-    runners.sort(key=_ranking_key)
+    ranked_runners = _rank_runners(runners)
 
     lines = ["🏃 KU94 RUN 100일 챌린지 오늘의 기록"]
-    if runners:
+    top_three = [(runner, rank) for runner, rank in ranked_runners if rank <= 3]
+    if top_three:
         lines.append("오늘의 TOP 3")
-        medals = ("🥇", "🥈", "🥉")
-        for rank, runner in enumerate(runners[:3]):
+        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+        for runner, rank in top_three:
             finish_day = runner.get("완주일차")
             finish_note = f" · {finish_day}일차 완주" if finish_day else ""
             lines.append(
@@ -40,9 +41,35 @@ def summarize_records(records: list[dict]) -> str:
     else:
         lines.append("아직 기록이 없습니다.")
 
-    milestone_count = sum(1 for runner in runners if _run_count(runner) >= 100)
+    milestone_count = sum(1 for runner, _ in ranked_runners if _run_count(runner) >= 100)
     lines.append(f"🏆 현재 100회 완주자 {milestone_count}명!")
     return "\n".join(lines)
+
+
+def _rank_runners(runners: list[dict]) -> list[tuple[dict, int]]:
+    ordered = sorted(runners, key=_ranking_key)
+    finished_total = sum(1 for runner in ordered if _run_count(runner) >= 100)
+    finished_position = 0
+    unfinished_position = 0
+    previous_finish_day = None
+    previous_rank = None
+    ranked = []
+
+    for runner in ordered:
+        if _run_count(runner) >= 100:
+            finished_position += 1
+            finish_day = runner.get("완주일차")
+            if finish_day is not None and finish_day == previous_finish_day:
+                rank = previous_rank
+            else:
+                rank = finished_position
+            previous_finish_day = finish_day
+            previous_rank = rank
+        else:
+            unfinished_position += 1
+            rank = finished_total + unfinished_position
+        ranked.append((runner, rank))
+    return ranked
 
 
 def _run_count(record: dict) -> float:

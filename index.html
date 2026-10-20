@@ -129,6 +129,25 @@
       const runners = records
         .filter(row => String(row['이름'] ?? '').trim() && runCount(row) > 0)
         .sort(ranking);
+      const finishedCount = runners.filter(row => runCount(row) >= 100).length;
+      const ranks = new Map();
+      let finishedPosition = 0;
+      let unfinishedPosition = 0;
+      let previousFinishDay = null;
+      let previousRank = null;
+      runners.forEach(runner => {
+        if (runCount(runner) >= 100) {
+          finishedPosition += 1;
+          const day = finishDay(runner);
+          const rank = day != null && day === previousFinishDay ? previousRank : finishedPosition;
+          ranks.set(runner, rank);
+          previousFinishDay = day;
+          previousRank = rank;
+        } else {
+          unfinishedPosition += 1;
+          ranks.set(runner, finishedCount + unfinishedPosition);
+        }
+      });
       count.textContent = `${runners.length}명`;
       if (!runners.length) {
         showMessage('아직 표시할 기록이 없습니다.');
@@ -136,12 +155,13 @@
       }
       const list = document.createElement('ol');
       list.className = 'list';
-      runners.forEach((runner, index) => {
+      runners.forEach(runner => {
         const item = document.createElement('li');
         item.className = 'runner';
         const rank = document.createElement('span');
         rank.className = 'rank';
-        rank.textContent = medals[index] || String(index + 1);
+        const rankNumber = ranks.get(runner);
+        rank.textContent = medals[rankNumber - 1] || String(rankNumber);
         const info = document.createElement('div');
         info.className = 'runner-info';
         const name = document.createElement('span');

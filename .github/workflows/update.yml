@@ -2,7 +2,7 @@ name: Update running challenge data
 
 on:
   schedule:
-    - cron: "0 15 * * *" # 00:00 KST
+    - cron: "0 17 * * *" # 02:00 KST
   workflow_dispatch:
 
 permissions:

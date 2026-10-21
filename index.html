@@ -44,7 +44,7 @@
     .runner { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; min-height: 72px; padding: 0 24px; border-bottom: 1px solid #f0f2ef; }
     .runner:last-child { border-bottom: 0; }
     .rank { color: #929b94; font-size: 14px; font-weight: 700; }
-    .runner:nth-child(-n+3) .rank { font-size: 18px; }
+    .rank.medal { display: grid; place-items: center; width: 26px; height: 26px; font-size: 20px; line-height: 1; }
     .runner-info { min-width: 0; }
     .name { font-size: 15px; font-weight: 700; }
     .trophy { margin-left: 5px; }
@@ -127,7 +127,7 @@
         return runCount(b) - runCount(a) || restCount(a) - restCount(b);
       };
       const runners = records
-        .filter(row => String(row['이름'] ?? '').trim() && runCount(row) > 0)
+        .filter(row => String(row['이름'] ?? '').trim())
         .sort(ranking);
       const finishedCount = runners.filter(row => runCount(row) >= 100).length;
       const ranks = new Map();
@@ -161,7 +161,12 @@
         const rank = document.createElement('span');
         rank.className = 'rank';
         const rankNumber = ranks.get(runner);
-        rank.textContent = medals[rankNumber - 1] || String(rankNumber);
+        if (medals[rankNumber - 1]) {
+          rank.classList.add('medal');
+          rank.textContent = medals[rankNumber - 1];
+        } else {
+          rank.textContent = String(rankNumber);
+        }
         const info = document.createElement('div');
         info.className = 'runner-info';
         const name = document.createElement('span');

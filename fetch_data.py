@@ -32,7 +32,6 @@ def summarize_records(records: list[dict]) -> str:
     lines = ["🏃 KU94 RUN 100일 챌린지 오늘의 기록"]
     top_three = [(runner, rank) for runner, rank in ranked_runners if rank <= 3]
     if top_three:
-        lines.append("오늘의 TOP 3")
         medals = {1: "🥇", 2: "🥈", 3: "🥉"}
         for runner, rank in top_three:
             finish_day = runner.get("완주일차")

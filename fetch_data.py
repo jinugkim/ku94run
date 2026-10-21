@@ -15,7 +15,9 @@ import requests
 
 DATA_DIR = Path("data")
 SHEET_ID_PATTERN = re.compile(r"/spreadsheets/d/([a-zA-Z0-9-_]+)")
-DISPATCH_EVENT_TYPE = "ku94_run_daily_report"
+DISPATCH_EVENT_TYPE = "send-kakao-msg"
+COURIER_PROJECT = "KU94 RUN 100일 챌린지"
+COURIER_RECIPIENTS = ["ME"]
 WEEKDAY_HEADERS = {"월", "화", "수", "목", "금", "토", "일"}
 
 
@@ -200,7 +202,11 @@ def dispatch_kakao_message(message: str) -> None:
         },
         json={
             "event_type": DISPATCH_EVENT_TYPE,
-            "client_payload": {"message": message},
+            "client_payload": {
+                "project": COURIER_PROJECT,
+                "message": message,
+                "recipients": COURIER_RECIPIENTS,
+            },
         },
         timeout=20,
     )

@@ -47,6 +47,7 @@ jobs:
           if [ -d data ]; then
             cp -R data/. _site/data/
           fi
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > _site/published-at.txt
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

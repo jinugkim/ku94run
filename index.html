@@ -144,7 +144,8 @@
           if (aDay != null && bDay != null && aDay !== bDay) return aDay - bDay;
           if (aDay != null && bDay == null) return -1;
           if (aDay == null && bDay != null) return 1;
-          return restCount(a) - restCount(b);
+          return restCount(a) - restCount(b)
+            || String(a['이름'] ?? '').trim().localeCompare(String(b['이름'] ?? '').trim(), 'ko');
         }
         return runCount(b) - runCount(a) || restCount(a) - restCount(b);
       };

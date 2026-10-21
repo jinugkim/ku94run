@@ -93,7 +93,13 @@ def _ranking_key(record: dict) -> tuple:
     runs = _run_count(record)
     if runs >= 100:
         finish_day = record.get("완주일차")
-        return (0, finish_day if finish_day is not None else float("inf"), _rest_count(record))
+        name = str(record.get("이름", "")).strip()
+        return (
+            0,
+            finish_day if finish_day is not None else float("inf"),
+            _rest_count(record),
+            name,
+        )
     return (1, -runs, _rest_count(record))
 
 

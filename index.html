@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f7f3">
+  <meta name="theme-color" content="#7a1735">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -11,61 +11,63 @@
   <style>
     :root {
       color-scheme: light;
-      --ink: #17251d;
-      --muted: #758078;
-      --green: #1f6849;
-      --green-dark: #164b35;
-      --line: #e7ebe5;
-      --paper: #fff;
-      --bg: #f5f7f3;
+      --ink: #2b1b20;
+      --muted: #806f73;
+      --crimson: #7a1735;
+      --crimson-dark: #5d1028;
+      --line: #eadfe2;
+      --paper: #fffdfb;
+      --bg: #f7f2ef;
+      --gold: #b08a42;
       font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; color: var(--ink); background: var(--bg); min-height: 100vh; }
-    .topbar { height: 66px; display: flex; align-items: center; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.86); }
+    body { margin: 0; color: var(--ink); background: radial-gradient(ellipse at 50% 0, #fffaf5 0, var(--bg) 58%); min-height: 100vh; }
+    .topbar { height: 66px; display: flex; align-items: center; border-bottom: 1px solid var(--line); background: rgba(255,253,251,.92); }
     .topbar-inner { width: min(100% - 40px, 920px); margin: auto; display: flex; align-items: center; justify-content: space-between; }
     .brand { display: flex; gap: 10px; align-items: center; font-size: 14px; font-weight: 800; letter-spacing: .08em; }
-    .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--green); color: white; font-size: 16px; }
+    .university-wordmark { display: block; width: 104px; height: auto; }
+    .brand-divider { width: 1px; height: 22px; background: #d9c8cd; }
     .brand-note { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
     main { width: min(100% - 40px, 760px); margin: 58px auto 80px; }
-    .eyebrow { margin: 0 0 12px; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .16em; }
+    .eyebrow { margin: 0 0 12px; color: var(--crimson); font-size: 12px; font-weight: 800; letter-spacing: .16em; }
     h1 { margin: 0; font-size: clamp(32px, 7vw, 48px); letter-spacing: -.055em; line-height: 1.12; }
     .intro { margin: 14px 0 24px; color: var(--muted); font-size: 15px; line-height: 1.6; }
-    .rules { margin: 18px 24px 20px; padding: 18px 20px; border: 1px solid #dce8df; border-radius: 14px; background: #edf4ee; }
-    .rules h2 { margin: 0 0 8px; color: var(--green-dark); font-size: 14px; }
-    .rules p { margin: 0; color: #526258; font-size: 13px; line-height: 1.7; white-space: pre-line; }
-    .finishers { margin: 0 24px 20px; padding: 18px 20px; border: 1px solid #eadfb9; border-radius: 14px; background: #fbf8ed; }
+    .rules { margin: 18px 24px 20px; padding: 18px 20px; border: 1px solid #eadfe2; border-left: 4px solid var(--crimson); border-radius: 12px; background: #fbf7f4; }
+    .rules h2 { margin: 0 0 8px; color: var(--crimson-dark); font-size: 14px; }
+    .rules p { margin: 0; color: #63565a; font-size: 13px; line-height: 1.7; white-space: pre-line; }
+    .finishers { margin: 0 24px 20px; padding: 18px 20px; border: 1px solid #e9d8b5; border-radius: 12px; background: #fffaf0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.7); }
     .finishers[hidden], .finishers-group[hidden] { display: none; }
-    .finishers h2 { margin: 0 0 8px; color: #68551d; font-size: 15px; }
-    .finishers h3 { margin: 16px 0 0; color: #68551d; font-size: 13px; }
-    .finishers-count { margin: 0; color: #6b6451; font-size: 13px; }
+    .finishers h2 { margin: 0 0 8px; color: var(--crimson-dark); font-size: 15px; }
+    .finishers h3 { margin: 16px 0 0; color: #765b26; font-size: 13px; }
+    .finishers-count { margin: 0; color: #74674e; font-size: 13px; }
     .finisher-names { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
-    .finisher-names li { padding: 5px 10px; border-radius: 999px; color: #51451f; background: #f1e9ce; font-size: 13px; }
+    .finisher-names li { padding: 5px 10px; border: 1px solid #eadbbd; border-radius: 999px; color: #604a22; background: #f5ecd7; font-size: 13px; }
     .year-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 16px; scrollbar-width: none; }
     .year-tabs::-webkit-scrollbar { display: none; }
     .year-tab { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; color: #606b63; background: var(--paper); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: .18s ease; }
-    .year-tab:hover { border-color: #a9c5b4; }
-    .year-tab.upcoming { border-style: dashed; color: #8a938d; }
-    .year-tab[aria-selected="true"] { color: white; background: var(--green); border-color: var(--green); }
-    .board { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: 0 12px 34px rgba(25,50,35,.045); }
+    .year-tab:hover { border-color: #c68d9e; }
+    .year-tab.upcoming { border-style: dashed; color: #8a7c80; }
+    .year-tab[aria-selected="true"] { color: white; background: var(--crimson); border-color: var(--crimson); box-shadow: 0 5px 14px rgba(122,23,53,.18); }
+    .board { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: 0 14px 36px rgba(76,25,42,.07); }
     .board-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid var(--line); }
     .board-title { margin: 0; font-size: 17px; letter-spacing: -.02em; }
     .count { color: var(--muted); font-size: 13px; }
     .list { list-style: none; padding: 0; margin: 0; }
-    .runner { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; min-height: 72px; padding: 0 24px; border-bottom: 1px solid #f0f2ef; }
+    .runner { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; min-height: 72px; padding: 0 24px; border-bottom: 1px solid #f2ebed; }
     .runner:last-child { border-bottom: 0; }
-    .rank { color: #929b94; font-size: 14px; font-weight: 700; }
+    .rank { color: #95878b; font-size: 14px; font-weight: 700; }
     .rank.medal { display: grid; place-items: center; width: 26px; height: 26px; font-size: 20px; line-height: 1; }
     .runner-info { min-width: 0; }
     .name { font-size: 15px; font-weight: 700; }
     .trophy { margin-left: 5px; }
     .rest-days { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; font-weight: 500; }
-    .rest-days.over-limit { color: #c43b36; font-weight: 700; }
-    .runs { color: var(--green-dark); font-size: 15px; font-weight: 800; white-space: nowrap; }
+    .rest-days.over-limit { color: var(--crimson); font-weight: 700; }
+    .runs { color: var(--crimson-dark); font-size: 15px; font-weight: 800; white-space: nowrap; }
     .runs small { margin-left: 3px; color: var(--muted); font-size: 12px; font-weight: 500; }
     .state { padding: 44px 20px; color: var(--muted); text-align: center; font-size: 14px; }
-    .footer { margin: 18px 4px 0; color: #8b948d; text-align: center; font-size: 12px; }
-    .publish-time { display: block; margin-top: 6px; color: #9aa29b; font-size: 11px; }
+    .footer { margin: 18px 4px 0; color: #8a7c80; text-align: center; font-size: 12px; }
+    .publish-time { display: block; margin-top: 6px; color: #9b8d91; font-size: 11px; }
     @media (max-width: 520px) {
       .topbar { height: 58px; }
       .topbar-inner, main { width: min(100% - 32px, 760px); }
@@ -81,7 +83,7 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">↗</span><span>KU94 RUN</span></div>
+      <div class="brand"><img class="university-wordmark" src="assets/korea-university-wordmark.gif" alt="고려대학교"><span class="brand-divider" aria-hidden="true"></span><span>KU94 RUN</span></div>
       <span class="brand-note">고려대학교 94학번 러닝 모임</span>
     </div>
   </header>

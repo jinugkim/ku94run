@@ -29,6 +29,9 @@ jobs:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
           CURRENT_SHEET_URL: ${{ vars.CURRENT_SHEET_URL }}
           START_DATE: ${{ vars.START_DATE }}
+          ACTIVE_CHALLENGE_YEAR: ${{ vars.ACTIVE_CHALLENGE_YEAR }}
+          CHALLENGE_CONFIGS_JSON: ${{ vars.CHALLENGE_CONFIGS_JSON }}
+          ALLOW_COMPLETED_YEAR_REWRITE: ${{ vars.ALLOW_COMPLETED_YEAR_REWRITE }}
           COURIER_PAT: ${{ secrets.COURIER_PAT }}
           COURIER_OWNER: ${{ vars.COURIER_OWNER }}
 

@@ -298,28 +298,62 @@ def dispatch_kakao_message(message: str) -> None:
     response.raise_for_status()
 
 
+def _resolve_challenge_config() -> dict[str, str | None]:
+    """Select one explicit year's sheet/date/rules, with legacy 2026 fallback."""
+    active_year = os.environ.get("ACTIVE_CHALLENGE_YEAR", "").strip()
+    legacy_start = os.environ.get("START_DATE", "").strip()
+    legacy_sheet = os.environ.get("CURRENT_SHEET_URL", "").strip()
+    legacy_year_match = re.match(r"^(\d{4})(?:$|-)", legacy_start)
+    legacy_year = legacy_year_match.group(1) if legacy_year_match else ""
+
+    raw_configs = os.environ.get("CHALLENGE_CONFIGS_JSON", "").strip()
+    configs: dict[str, Any] = {}
+    if raw_configs:
+        try:
+            parsed = json.loads(raw_configs)
+        except json.JSONDecodeError as exc:
+            raise ValueError("CHALLENGE_CONFIGS_JSON must be valid JSON") from exc
+        if not isinstance(parsed, dict) or any(not isinstance(value, dict) for value in parsed.values()):
+            raise ValueError("CHALLENGE_CONFIGS_JSON must map year strings to config objects")
+        configs = parsed
+
+    if not active_year:
+        active_year = legacy_year
+    if not re.fullmatch(r"\d{4}", active_year):
+        raise ValueError("Set ACTIVE_CHALLENGE_YEAR to a four-digit year")
+
+    selected = configs.get(active_year)
+    if selected is not None:
+        start_value = str(selected.get("start_date", "")).strip()
+        sheet_url = str(selected.get("sheet_url", "")).strip()
+        rules = selected.get("rules")
+        rules = str(rules).strip() if rules is not None else None
+    elif active_year == legacy_year and legacy_start and legacy_sheet:
+        # Keeps the existing 2026 Actions variables working until year configs are added.
+        start_value, sheet_url, rules = legacy_start, legacy_sheet, None
+    else:
+        raise ValueError(f"No sheet/date config is defined for active challenge year {active_year}")
+
+    start_year_match = re.match(r"^(\d{4})(?:$|-)", start_value)
+    if not start_value or not sheet_url:
+        raise ValueError(f"Challenge config {active_year} requires both start_date and sheet_url")
+    if not start_year_match or start_year_match.group(1) != active_year:
+        raise ValueError(f"Challenge config key {active_year} does not match its start_date year")
+    return {"year": active_year, "start_date": start_value, "sheet_url": sheet_url, "rules": rules}
+
+
 def main() -> None:
     credentials_json = os.environ.get("GCP_CREDENTIALS")
-    sheet_url = os.environ.get("CURRENT_SHEET_URL")
-    start_date = os.environ.get("START_DATE")
+    if not credentials_json:
+        raise ValueError("Missing required environment variable: GCP_CREDENTIALS")
+    challenge_config = _resolve_challenge_config()
+    year = challenge_config["year"]
+    start_value = challenge_config["start_date"]
+    sheet_url = challenge_config["sheet_url"]
 
-    missing = [
-        name
-        for name, value in (
-            ("GCP_CREDENTIALS", credentials_json),
-            ("CURRENT_SHEET_URL", sheet_url),
-            ("START_DATE", start_date),
-        )
-        if not value
-    ]
-    if missing:
-        raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")
-
-    start_value = start_date.strip()
     challenge_start = None
     if re.fullmatch(r"\d{4}", start_value):
         # Existing repository configuration uses START_DATE as a year label.
-        year = start_value
         challenge_ended = False  # Resolved from the final populated day column below.
         challenge_day = None
     else:
@@ -327,7 +361,8 @@ def main() -> None:
             challenge_start = date.fromisoformat(start_value[:10])
         except ValueError as exc:
             raise ValueError("START_DATE must be a year (2026) or ISO date (2026-01-01)") from exc
-        year = str(challenge_start.year)
+        if str(challenge_start.year) != year:
+            raise ValueError("START_DATE year does not match ACTIVE_CHALLENGE_YEAR")
         last_challenge_day = challenge_start + timedelta(days=CHALLENGE_CALENDAR_DAYS - 1)
         today_kst = datetime.now(ZoneInfo("Asia/Seoul")).date()
         challenge_ended = today_kst > last_challenge_day
@@ -353,10 +388,6 @@ def main() -> None:
         challenge_ended = challenge_day >= CHALLENGE_CALENDAR_DAYS
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    (DATA_DIR / f"{year}.json").write_text(
-        json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-
     meta_path = DATA_DIR / "meta.json"
     if meta_path.exists():
         try:
@@ -366,13 +397,35 @@ def main() -> None:
     else:
         meta = {"years": []}
 
+    archive_path = DATA_DIR / f"{year}.json"
+    completed_years = {str(item) for item in meta.get("completed_years", [])}
+    rewrite_completed_archive = os.environ.get("ALLOW_COMPLETED_YEAR_REWRITE", "").strip() == year
+    if year in completed_years and not rewrite_completed_archive:
+        if not archive_path.exists():
+            raise RuntimeError(
+                f"Completed archive {archive_path} is missing. Restore it from Git history before updating."
+            )
+        if archive_path.stat().st_size == 0:
+            raise RuntimeError(
+                f"Completed archive {archive_path} is empty. Restore it from Git history before updating."
+            )
+        try:
+            archived_records = json.loads(archive_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{archive_path} is not valid JSON") from exc
+        if not archived_records:
+            raise RuntimeError(
+                f"Completed archive {archive_path} contains no records. Restore it from Git history before updating."
+            )
+        if archived_records != records:
+            raise RuntimeError(
+                f"Refusing to overwrite completed archive {year}. Set ALLOW_COMPLETED_YEAR_REWRITE={year} for an intentional correction."
+            )
+
     years = {str(item) for item in meta.get("years", [])}
     years.add(year)
-    completed_years = {str(item) for item in meta.get("completed_years", [])}
     if challenge_ended:
         completed_years.add(year)
-    else:
-        completed_years.discard(year)
     unofficial_finishers = meta.get("unofficial_finishers", {})
     if not isinstance(unofficial_finishers, dict):
         unofficial_finishers = {}
@@ -390,6 +443,15 @@ def main() -> None:
     meta["completed_years"] = sorted(completed_years, key=int, reverse=True)
     meta["upcoming_years"] = sorted(upcoming_years, key=int, reverse=True)
     meta["unofficial_finishers"] = unofficial_finishers
+    challenge_rules = meta.get("challenge_rules", {})
+    if not isinstance(challenge_rules, dict):
+        challenge_rules = {}
+    if challenge_config.get("rules"):
+        challenge_rules[year] = challenge_config["rules"]
+    meta["challenge_rules"] = challenge_rules
+    archive_path.write_text(
+        json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     meta_path.write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

@@ -177,6 +177,17 @@ def _is_run_mark(value) -> bool:
         return bool(re.fullmatch(r"\d+(?:\.\d+)?\s*(?:km|키로|킬로)", text, re.IGNORECASE))
 
 
+def _latest_recorded_challenge_day(records: list[dict]) -> int:
+    """Find the latest non-empty day column when START_DATE contains only a year."""
+    latest_day = 0
+    for record in records:
+        for key, value in record.items():
+            match = re.fullmatch(r"챌린지 (\d+)일", str(key))
+            if match and str(value or "").strip():
+                latest_day = max(latest_day, int(match.group(1)))
+    return latest_day
+
+
 def read_sheet_records(worksheet) -> list[dict]:
     """Preserve repeated weekday columns so each challenge day stays in order."""
     values = worksheet.get_all_values()
@@ -304,15 +315,23 @@ def main() -> None:
     if missing:
         raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")
 
-    try:
-        challenge_start = date.fromisoformat(start_date.strip()[:10])
-    except ValueError as exc:
-        raise ValueError("START_DATE must be an ISO date (for example, 2026-01-01)") from exc
-    year = str(challenge_start.year)
-    last_challenge_day = challenge_start + timedelta(days=CHALLENGE_CALENDAR_DAYS - 1)
-    today_kst = datetime.now(ZoneInfo("Asia/Seoul")).date()
-    challenge_ended = today_kst > last_challenge_day
-    challenge_day = (today_kst - challenge_start).days + 1
+    start_value = start_date.strip()
+    challenge_start = None
+    if re.fullmatch(r"\d{4}", start_value):
+        # Existing repository configuration uses START_DATE as a year label.
+        year = start_value
+        challenge_ended = False  # Resolved from the final populated day column below.
+        challenge_day = None
+    else:
+        try:
+            challenge_start = date.fromisoformat(start_value[:10])
+        except ValueError as exc:
+            raise ValueError("START_DATE must be a year (2026) or ISO date (2026-01-01)") from exc
+        year = str(challenge_start.year)
+        last_challenge_day = challenge_start + timedelta(days=CHALLENGE_CALENDAR_DAYS - 1)
+        today_kst = datetime.now(ZoneInfo("Asia/Seoul")).date()
+        challenge_ended = today_kst > last_challenge_day
+        challenge_day = (today_kst - challenge_start).days + 1
 
     sheet_match = SHEET_ID_PATTERN.search(sheet_url)
     if not sheet_match:
@@ -327,6 +346,11 @@ def main() -> None:
     spreadsheet = client.open_by_key(sheet_match.group(1))
     worksheet = spreadsheet.get_worksheet(0)
     records = read_sheet_records(worksheet)
+    if challenge_start is None:
+        challenge_day = _latest_recorded_challenge_day(records)
+        if challenge_day < 1:
+            raise ValueError("No populated challenge-day columns were found in the current sheet")
+        challenge_ended = challenge_day >= CHALLENGE_CALENDAR_DAYS
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     (DATA_DIR / f"{year}.json").write_text(
@@ -346,7 +370,7 @@ def main() -> None:
     years.add(year)
     upcoming_years = {str(item) for item in meta.get("upcoming_years", [])}
     if challenge_ended:
-        upcoming_years.add(str(challenge_start.year + 1))
+        upcoming_years.add(str(int(year) + 1))
     else:
         upcoming_years.discard(year)
     upcoming_years.difference_update(years)

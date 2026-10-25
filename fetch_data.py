@@ -188,6 +188,11 @@ def read_sheet_records(worksheet) -> list[dict]:
 
 
 def dispatch_kakao_message(message: str) -> None:
+    run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
+    if not run_id:
+        raise ValueError("GITHUB_RUN_ID is required to create a stable Courier request ID")
+    request_id = f"ku94-run:{run_id}"
+
     token = os.environ.get("COURIER_PAT")
     courier_owner = os.environ.get("COURIER_OWNER")
     missing = [
@@ -208,6 +213,7 @@ def dispatch_kakao_message(message: str) -> None:
         json={
             "event_type": DISPATCH_EVENT_TYPE,
             "client_payload": {
+                "request_id": request_id,
                 "project": COURIER_PROJECT,
                 "message": message,
                 "recipients": COURIER_RECIPIENTS,

@@ -28,9 +28,9 @@
     .eyebrow { margin: 0 0 12px; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .16em; }
     h1 { margin: 0; font-size: clamp(32px, 7vw, 48px); letter-spacing: -.055em; line-height: 1.12; }
     .intro { margin: 14px 0 24px; color: var(--muted); font-size: 15px; line-height: 1.6; }
-    .rules { margin: 0 0 28px; padding: 18px 20px; border: 1px solid #dce8df; border-radius: 14px; background: #edf4ee; }
+    .rules { margin: 18px 24px 20px; padding: 18px 20px; border: 1px solid #dce8df; border-radius: 14px; background: #edf4ee; }
     .rules h2 { margin: 0 0 8px; color: var(--green-dark); font-size: 14px; }
-    .rules p { margin: 0; color: #526258; font-size: 13px; line-height: 1.7; }
+    .rules p { margin: 0; color: #526258; font-size: 13px; line-height: 1.7; white-space: pre-line; }
     .year-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 16px; scrollbar-width: none; }
     .year-tabs::-webkit-scrollbar { display: none; }
     .year-tab { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; color: #606b63; background: var(--paper); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: .18s ease; }
@@ -79,16 +79,16 @@
     <p class="eyebrow">100 DAYS RUNNING CHALLENGE</p>
     <h1>함께 달린<br>우리의 기록</h1>
     <p class="intro">매일의 한 걸음이 모여 만든 기록을 확인해 보세요.</p>
-    <section class="rules" aria-labelledby="rules-title">
-      <h2 id="rules-title">📜 챌린지 공식 룰</h2>
-      <p>기간 내 1일 4km 이상, 페이스 9분/km 미만 달리기 100회 이상 / 최대 7회 자유 휴식 허용 / 공식 트레일러닝 대회 기록 인정</p>
-    </section>
     <nav class="year-tabs" id="year-tabs" aria-label="챌린지 연도"></nav>
     <section class="board" aria-live="polite" aria-busy="false">
       <div class="board-head">
         <h2 class="board-title" id="board-title">참여자 랭킹</h2>
         <span class="count" id="runner-count"></span>
       </div>
+      <section class="rules" aria-labelledby="rules-title">
+        <h2 id="rules-title">📜 챌린지 공식 규칙</h2>
+        <p id="rules-content">규칙을 불러오는 중입니다…</p>
+      </section>
       <div id="content"><p class="state">기록을 불러오는 중입니다…</p></div>
     </section>
     <p class="footer">
@@ -102,7 +102,16 @@
     const board = document.querySelector('.board');
     const count = document.querySelector('#runner-count');
     const title = document.querySelector('#board-title');
+    const rulesTitle = document.querySelector('#rules-title');
+    const rulesContent = document.querySelector('#rules-content');
     const medals = ['🥇', '🥈', '🥉'];
+    let challengeRules = {};
+
+    function showChallengeRules(year, comingSoon = false) {
+      rulesTitle.textContent = `📜 ${year} 챌린지 공식 규칙`;
+      rulesContent.textContent = challengeRules[year]
+        || (comingSoon ? '챌린지 규칙은 확정 후 공개됩니다.' : '해당 연도의 챌린지 규칙이 아직 등록되지 않았습니다.');
+    }
 
     async function loadPublishTime() {
       const label = document.querySelector('#publish-time');
@@ -227,6 +236,7 @@
 
     async function loadYear(year, selectedButton, comingSoon = false) {
       tabs.querySelectorAll('button').forEach(button => button.setAttribute('aria-selected', String(button === selectedButton)));
+      showChallengeRules(year, comingSoon);
       if (comingSoon) {
         title.textContent = `${year} 챌린지`;
         board.setAttribute('aria-busy', 'false');
@@ -254,6 +264,7 @@
         const response = await fetch('data/meta.json');
         if (!response.ok) throw new Error('연도별 기록을 찾을 수 없습니다.');
         const meta = await response.json();
+        challengeRules = meta.challenge_rules || {};
         const years = [...new Set((meta.years || []).map(String))].sort((a, b) => Number(b) - Number(a));
         const recordedYears = new Set(years);
         const upcomingYears = [...new Set((meta.upcoming_years || []).map(String))]

@@ -7,7 +7,9 @@ import os
 import re
 import sys
 import traceback
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import gspread
 import requests
@@ -18,16 +20,42 @@ SHEET_ID_PATTERN = re.compile(r"/spreadsheets/d/([a-zA-Z0-9-_]+)")
 DISPATCH_EVENT_TYPE = "send-kakao-msg"
 COURIER_PROJECT = "KU94 RUN 100일 챌린지"
 COURIER_RECIPIENTS = ["ME"]
+UNOFFICIAL_FINISHERS_BY_YEAR = {"2026": ["김상종"]}
+CHALLENGE_CALENDAR_DAYS = 107  # 100 runs plus up to 7 rest days.
 WEEKDAY_HEADERS = {"월", "화", "수", "목", "금", "토", "일"}
 
 
-def summarize_records(records: list[dict]) -> str:
+def summarize_records(
+    records: list[dict],
+    *,
+    challenge_ended: bool = False,
+    year: str | None = None,
+) -> str:
     runners = [
         row
         for row in records
         if str(row.get("이름", "")).strip() and _run_count(row) > 0
     ]
     ranked_runners = _rank_runners(runners)
+
+    if challenge_ended:
+        official_finishers = sorted(
+            str(runner["이름"]).strip()
+            for runner, _ in ranked_runners
+            if _run_count(runner) >= 100
+        )
+        year_key = str(year or "")
+        unofficial_finishers = sorted(
+            name for name in UNOFFICIAL_FINISHERS_BY_YEAR.get(year_key, [])
+            if name not in official_finishers
+        )
+        lines = [f"🏁 KU94 RUN {year_key} 100일 챌린지 완주자"]
+        lines.append(f"✅ 공식 완주자 {len(official_finishers)}명")
+        lines.extend(_format_name_groups(official_finishers))
+        if unofficial_finishers:
+            lines.append("🎖️ 비공식 완주자")
+            lines.extend(_format_name_groups(unofficial_finishers))
+        return "\n".join(lines)
 
     lines = ["🏃 KU94 RUN 100일 챌린지 오늘의 기록"]
     top_three = [(runner, rank) for runner, rank in ranked_runners if rank <= 3]
@@ -45,6 +73,27 @@ def summarize_records(records: list[dict]) -> str:
     milestone_count = sum(1 for runner, _ in ranked_runners if _run_count(runner) >= 100)
     lines.append(f"🏆 현재 100회 완주자 {milestone_count}명!")
     return "\n".join(lines)
+
+
+def _format_name_groups(names: list[str], max_line_chars: int = 100) -> list[str]:
+    """Group complete names into compact lines that Courier can split safely."""
+    lines: list[str] = []
+    group: list[str] = []
+    group_length = 0
+    for name in names:
+        added_length = len(name) + (2 if group else 0)
+        if group and group_length + added_length > max_line_chars:
+            lines.append(", ".join(group))
+            group = []
+            group_length = 0
+            added_length = len(name)
+        group.append(name)
+        group_length += added_length
+    if group:
+        lines.append(", ".join(group))
+    if not lines:
+        lines.append("아직 완주자가 없습니다.")
+    return lines
 
 
 def _rank_runners(runners: list[dict]) -> list[tuple[dict, int]]:
@@ -241,10 +290,14 @@ def main() -> None:
     if missing:
         raise ValueError(f"Missing required environment variable(s): {', '.join(missing)}")
 
-    year_match = re.match(r"^\s*(\d{4})", start_date)
-    if not year_match:
-        raise ValueError("START_DATE must begin with a four-digit year (for example, 2026-01-01)")
-    year = year_match.group(1)
+    try:
+        challenge_start = date.fromisoformat(start_date.strip()[:10])
+    except ValueError as exc:
+        raise ValueError("START_DATE must be an ISO date (for example, 2026-01-01)") from exc
+    year = str(challenge_start.year)
+    last_challenge_day = challenge_start + timedelta(days=CHALLENGE_CALENDAR_DAYS - 1)
+    today_kst = datetime.now(ZoneInfo("Asia/Seoul")).date()
+    challenge_ended = today_kst > last_challenge_day
 
     sheet_match = SHEET_ID_PATTERN.search(sheet_url)
     if not sheet_match:
@@ -282,7 +335,7 @@ def main() -> None:
     )
     print(f"Exported {len(records)} records to data/{year}.json")
 
-    summary = summarize_records(records)
+    summary = summarize_records(records, challenge_ended=challenge_ended, year=year)
     print("Dispatching daily summary to courier.")
     dispatch_kakao_message(summary)
 

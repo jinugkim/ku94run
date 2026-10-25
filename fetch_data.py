@@ -30,6 +30,7 @@ def summarize_records(
     *,
     challenge_ended: bool = False,
     year: str | None = None,
+    challenge_day: int | None = None,
 ) -> str:
     runners = [
         row
@@ -57,21 +58,34 @@ def summarize_records(
             lines.extend(_format_name_groups(unofficial_finishers))
         return "\n".join(lines)
 
-    lines = ["🏃 KU94 RUN 100일 챌린지 오늘의 기록"]
-    top_three = [(runner, rank) for runner, rank in ranked_runners if rank <= 3]
-    if top_three:
-        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
-        for runner, rank in top_three:
-            finish_day = runner.get("완주일차")
-            finish_note = f" · {finish_day}일차 완주" if finish_day else ""
-            lines.append(
-                f"{medals[rank]} {str(runner['이름']).strip()} · {_run_count(runner)}회{finish_note}"
-            )
+    if challenge_day is None or challenge_day < 1:
+        raise ValueError("challenge_day must be a positive challenge-day number")
+    day_key = f"챌린지 {challenge_day}일"
+    daily_finishers = sorted(
+        (
+            row for row in records
+            if str(row.get("이름", "")).strip() and _is_run_mark(row.get(day_key))
+        ),
+        key=lambda row: str(row["이름"]).strip(),
+    )
+    current_achievers = sorted(
+        str(row["이름"]).strip()
+        for row in records
+        if str(row.get("이름", "")).strip()
+        and _run_count(row) >= 100
+        and row.get("완주일차") is not None
+        and row["완주일차"] <= challenge_day
+    )
+    daily_names = [str(row["이름"]).strip() for row in daily_finishers]
+    lines = [f"🏃 KU94 RUN 100일 챌린지 · {challenge_day}일차 기록"]
+    if current_achievers:
+        lines.append(f"🏆 현재 챌린지 달성자 {len(current_achievers)}명")
+        lines.extend(_format_name_groups(current_achievers))
+    if daily_names:
+        lines.append(f"✅ {challenge_day}일차 달리기 기록자 {len(daily_names)}명")
+        lines.extend(_format_name_groups(daily_names))
     else:
-        lines.append("아직 기록이 없습니다.")
-
-    milestone_count = sum(1 for runner, _ in ranked_runners if _run_count(runner) >= 100)
-    lines.append(f"🏆 현재 100회 완주자 {milestone_count}명!")
+        lines.append(f"아직 {challenge_day}일차 달리기 기록이 없습니다.")
     return "\n".join(lines)
 
 
@@ -298,6 +312,7 @@ def main() -> None:
     last_challenge_day = challenge_start + timedelta(days=CHALLENGE_CALENDAR_DAYS - 1)
     today_kst = datetime.now(ZoneInfo("Asia/Seoul")).date()
     challenge_ended = today_kst > last_challenge_day
+    challenge_day = (today_kst - challenge_start).days + 1
 
     sheet_match = SHEET_ID_PATTERN.search(sheet_url)
     if not sheet_match:
@@ -335,7 +350,12 @@ def main() -> None:
     )
     print(f"Exported {len(records)} records to data/{year}.json")
 
-    summary = summarize_records(records, challenge_ended=challenge_ended, year=year)
+    summary = summarize_records(
+        records,
+        challenge_ended=challenge_ended,
+        year=year,
+        challenge_day=challenge_day,
+    )
     print("Dispatching daily summary to courier.")
     dispatch_kakao_message(summary)
 

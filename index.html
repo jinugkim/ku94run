@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7f3">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>KU94 RUN · 100일 챌린지</title>
   <style>
     :root {
@@ -31,6 +34,13 @@
     .rules { margin: 18px 24px 20px; padding: 18px 20px; border: 1px solid #dce8df; border-radius: 14px; background: #edf4ee; }
     .rules h2 { margin: 0 0 8px; color: var(--green-dark); font-size: 14px; }
     .rules p { margin: 0; color: #526258; font-size: 13px; line-height: 1.7; white-space: pre-line; }
+    .finishers { margin: 0 24px 20px; padding: 18px 20px; border: 1px solid #eadfb9; border-radius: 14px; background: #fbf8ed; }
+    .finishers[hidden], .finishers-group[hidden] { display: none; }
+    .finishers h2 { margin: 0 0 8px; color: #68551d; font-size: 15px; }
+    .finishers h3 { margin: 16px 0 0; color: #68551d; font-size: 13px; }
+    .finishers-count { margin: 0; color: #6b6451; font-size: 13px; }
+    .finisher-names { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+    .finisher-names li { padding: 5px 10px; border-radius: 999px; color: #51451f; background: #f1e9ce; font-size: 13px; }
     .year-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 16px; scrollbar-width: none; }
     .year-tabs::-webkit-scrollbar { display: none; }
     .year-tab { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; color: #606b63; background: var(--paper); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: .18s ease; }
@@ -89,6 +99,15 @@
         <h2 id="rules-title">📜 챌린지 공식 규칙</h2>
         <p id="rules-content">규칙을 불러오는 중입니다…</p>
       </section>
+      <section class="finishers" id="finishers-panel" hidden aria-live="polite">
+        <h2 id="finishers-title"></h2>
+        <p class="finishers-count" id="official-finishers-count"></p>
+        <ul class="finisher-names" id="official-finishers"></ul>
+        <div class="finishers-group" id="unofficial-finishers-group" hidden>
+          <h3>🎖️ 비공식 완주자</h3>
+          <ul class="finisher-names" id="unofficial-finishers"></ul>
+        </div>
+      </section>
       <div id="content"><p class="state">기록을 불러오는 중입니다…</p></div>
     </section>
     <p class="footer">
@@ -104,13 +123,64 @@
     const title = document.querySelector('#board-title');
     const rulesTitle = document.querySelector('#rules-title');
     const rulesContent = document.querySelector('#rules-content');
+    const finisherPanel = document.querySelector('#finishers-panel');
+    const finisherTitle = document.querySelector('#finishers-title');
+    const officialFinishersCount = document.querySelector('#official-finishers-count');
+    const officialFinishersList = document.querySelector('#official-finishers');
+    const unofficialFinishersGroup = document.querySelector('#unofficial-finishers-group');
+    const unofficialFinishersList = document.querySelector('#unofficial-finishers');
     const medals = ['🥇', '🥈', '🥉'];
     let challengeRules = {};
+    let completedYears = new Set();
+    let unofficialFinishersByYear = {};
 
     function showChallengeRules(year, comingSoon = false) {
       rulesTitle.textContent = `📜 ${year} 챌린지 공식 규칙`;
       rulesContent.textContent = challengeRules[year]
         || (comingSoon ? '챌린지 규칙은 확정 후 공개됩니다.' : '해당 연도의 챌린지 규칙이 아직 등록되지 않았습니다.');
+    }
+
+
+    function renderFinishers(records, year) {
+      const runCount = row => Math.min(100, Math.max(0, Number(row['달리기 횟수 '] ?? row['달리기 횟수'] ?? 0)));
+      const officialNames = records
+        .filter(row => String(row['이름'] ?? '').trim() && runCount(row) >= 100)
+        .map(row => String(row['이름']).trim())
+        .sort((a, b) => a.localeCompare(b, 'ko'));
+      const isCompleted = completedYears.has(String(year));
+      const unofficialNames = (unofficialFinishersByYear[String(year)] || [])
+        .map(name => String(name).trim())
+        .filter(name => name && !officialNames.includes(name))
+        .sort((a, b) => a.localeCompare(b, 'ko'));
+
+      finisherPanel.hidden = !isCompleted && officialNames.length === 0;
+      if (finisherPanel.hidden) return;
+
+      finisherTitle.textContent = isCompleted
+        ? `🏁 ${year} 챌린지 완주자`
+        : '🏆 현재 챌린지 달성자';
+      officialFinishersCount.textContent = isCompleted
+        ? `공식 완주자 ${officialNames.length}명`
+        : `${officialNames.length}명`;
+      officialFinishersList.replaceChildren();
+      officialNames.forEach(name => {
+        const item = document.createElement('li');
+        item.textContent = name;
+        officialFinishersList.append(item);
+      });
+      if (!officialNames.length) {
+        const item = document.createElement('li');
+        item.textContent = '공식 완주자가 없습니다.';
+        officialFinishersList.append(item);
+      }
+
+      unofficialFinishersGroup.hidden = !isCompleted || unofficialNames.length === 0;
+      unofficialFinishersList.replaceChildren();
+      unofficialNames.forEach(name => {
+        const item = document.createElement('li');
+        item.textContent = name;
+        unofficialFinishersList.append(item);
+      });
     }
 
     async function loadPublishTime() {
@@ -236,6 +306,8 @@
 
     async function loadYear(year, selectedButton, comingSoon = false) {
       tabs.querySelectorAll('button').forEach(button => button.setAttribute('aria-selected', String(button === selectedButton)));
+      finisherPanel.hidden = true;
+      unofficialFinishersGroup.hidden = true;
       showChallengeRules(year, comingSoon);
       if (comingSoon) {
         title.textContent = `${year} 챌린지`;
@@ -247,10 +319,11 @@
       board.setAttribute('aria-busy', 'true');
       showMessage('기록을 불러오는 중입니다…');
       try {
-        const response = await fetch(`data/${encodeURIComponent(year)}.json`);
+        const response = await fetch(`data/${encodeURIComponent(year)}.json?v=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('데이터 파일을 찾을 수 없습니다.');
         const records = await response.json();
         if (!Array.isArray(records)) throw new Error('데이터 형식이 올바르지 않습니다.');
+        renderFinishers(records, year);
         renderRunners(records);
       } catch (error) {
         showMessage(error.message || '기록을 불러오지 못했습니다.');
@@ -261,10 +334,12 @@
 
     async function init() {
       try {
-        const response = await fetch('data/meta.json');
+        const response = await fetch(`data/meta.json?v=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('연도별 기록을 찾을 수 없습니다.');
         const meta = await response.json();
         challengeRules = meta.challenge_rules || {};
+        completedYears = new Set((meta.completed_years || []).map(String));
+        unofficialFinishersByYear = meta.unofficial_finishers || {};
         const years = [...new Set((meta.years || []).map(String))].sort((a, b) => Number(b) - Number(a));
         const recordedYears = new Set(years);
         const upcomingYears = [...new Set((meta.upcoming_years || []).map(String))]

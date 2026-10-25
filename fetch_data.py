@@ -368,6 +368,18 @@ def main() -> None:
 
     years = {str(item) for item in meta.get("years", [])}
     years.add(year)
+    completed_years = {str(item) for item in meta.get("completed_years", [])}
+    if challenge_ended:
+        completed_years.add(year)
+    else:
+        completed_years.discard(year)
+    unofficial_finishers = meta.get("unofficial_finishers", {})
+    if not isinstance(unofficial_finishers, dict):
+        unofficial_finishers = {}
+    for unofficial_year, names in UNOFFICIAL_FINISHERS_BY_YEAR.items():
+        current_names = set(unofficial_finishers.get(unofficial_year, []))
+        current_names.update(names)
+        unofficial_finishers[unofficial_year] = sorted(current_names)
     upcoming_years = {str(item) for item in meta.get("upcoming_years", [])}
     if challenge_ended:
         upcoming_years.add(str(int(year) + 1))
@@ -375,7 +387,9 @@ def main() -> None:
         upcoming_years.discard(year)
     upcoming_years.difference_update(years)
     meta["years"] = sorted(years, key=int, reverse=True)
+    meta["completed_years"] = sorted(completed_years, key=int, reverse=True)
     meta["upcoming_years"] = sorted(upcoming_years, key=int, reverse=True)
+    meta["unofficial_finishers"] = unofficial_finishers
     meta_path.write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

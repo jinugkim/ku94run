@@ -35,6 +35,7 @@
     .year-tabs::-webkit-scrollbar { display: none; }
     .year-tab { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; color: #606b63; background: var(--paper); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: .18s ease; }
     .year-tab:hover { border-color: #a9c5b4; }
+    .year-tab.upcoming { border-style: dashed; color: #8a938d; }
     .year-tab[aria-selected="true"] { color: white; background: var(--green); border-color: var(--green); }
     .board { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: 0 12px 34px rgba(25,50,35,.045); }
     .board-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid var(--line); }
@@ -224,8 +225,14 @@
       content.replaceChildren(list);
     }
 
-    async function loadYear(year, selectedButton) {
+    async function loadYear(year, selectedButton, comingSoon = false) {
       tabs.querySelectorAll('button').forEach(button => button.setAttribute('aria-selected', String(button === selectedButton)));
+      if (comingSoon) {
+        title.textContent = `${year} 챌린지`;
+        board.setAttribute('aria-busy', 'false');
+        showMessage(`${year} KU94 RUN 100일 챌린지를 준비 중입니다. 기록은 챌린지가 시작되면 공개됩니다.`);
+        return;
+      }
       title.textContent = `${year} 참여자 랭킹`;
       board.setAttribute('aria-busy', 'true');
       showMessage('기록을 불러오는 중입니다…');
@@ -248,18 +255,26 @@
         if (!response.ok) throw new Error('연도별 기록을 찾을 수 없습니다.');
         const meta = await response.json();
         const years = [...new Set((meta.years || []).map(String))].sort((a, b) => Number(b) - Number(a));
-        if (!years.length) throw new Error('아직 등록된 챌린지 기록이 없습니다.');
-        const buttons = years.map(year => {
+        const recordedYears = new Set(years);
+        const upcomingYears = [...new Set((meta.upcoming_years || []).map(String))]
+          .filter(year => !recordedYears.has(year))
+          .sort((a, b) => Number(b) - Number(a));
+        if (!years.length && !upcomingYears.length) throw new Error('아직 등록된 챌린지 기록이 없습니다.');
+        const allYears = [...new Set([...years, ...upcomingYears])].sort((a, b) => Number(b) - Number(a));
+        const buttons = allYears.map(year => {
+          const comingSoon = !recordedYears.has(year);
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = 'year-tab';
-          button.textContent = year;
+          button.className = comingSoon ? 'year-tab upcoming' : 'year-tab';
+          button.textContent = comingSoon ? `${year} · Coming soon` : year;
           button.setAttribute('aria-selected', 'false');
-          button.addEventListener('click', () => loadYear(year, button));
+          button.addEventListener('click', () => loadYear(year, button, comingSoon));
           tabs.append(button);
           return button;
         });
-        await loadYear(years[0], buttons[0]);
+        const defaultYear = years[0] || upcomingYears[0];
+        const defaultButton = buttons[allYears.indexOf(defaultYear)];
+        await loadYear(defaultYear, defaultButton, !recordedYears.has(defaultYear));
       } catch (error) {
         showMessage(error.message || '기록을 불러오지 못했습니다.');
       }

@@ -344,7 +344,14 @@ def main() -> None:
 
     years = {str(item) for item in meta.get("years", [])}
     years.add(year)
+    upcoming_years = {str(item) for item in meta.get("upcoming_years", [])}
+    if challenge_ended:
+        upcoming_years.add(str(challenge_start.year + 1))
+    else:
+        upcoming_years.discard(year)
+    upcoming_years.difference_update(years)
     meta["years"] = sorted(years, key=int, reverse=True)
+    meta["upcoming_years"] = sorted(upcoming_years, key=int, reverse=True)
     meta_path.write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

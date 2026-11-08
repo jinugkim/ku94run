@@ -267,6 +267,32 @@ def dispatch_kakao_message(message: str) -> None:
         raise ValueError("GITHUB_RUN_ID is required to create a stable Courier request ID")
     request_id = f"ku94-run:{run_id}"
 
+    # 1. Try direct Cloudflare Worker send if credentials are available (Fast path: < 0.3s)
+    worker_url = (os.environ.get("COURIER_WORKER_URL") or os.environ.get("KAKAO_SYNC_URL") or "https://courier-kakao-auth.jinug-kim.workers.dev").strip().rstrip("/")
+    sync_token = (os.environ.get("COURIER_SYNC_TOKEN") or os.environ.get("KAKAO_SYNC_TOKEN") or "").strip()
+
+    if worker_url and sync_token:
+        try:
+            worker_payload = {
+                "request_id": request_id,
+                "project": COURIER_PROJECT,
+                "message": message,
+                "recipients": COURIER_RECIPIENTS,
+            }
+            res = requests.post(
+                f"{worker_url}/internal/send",
+                headers={"Authorization": f"Bearer {sync_token}", "Content-Type": "application/json"},
+                json=worker_payload,
+                timeout=15,
+            )
+            if res.status_code == 200:
+                print(f"Cloudflare Worker 직접 전송 성공 (HTTP {res.status_code})")
+                return
+            print(f"Cloudflare Worker 직접 전송 실패 (HTTP {res.status_code}), GitHub dispatch로 대체합니다.", file=sys.stderr)
+        except Exception as worker_exc:
+            print(f"Cloudflare Worker 직접 전송 예외 ({worker_exc}), GitHub dispatch로 대체합니다.", file=sys.stderr)
+
+    # 2. Fall back to GitHub repository_dispatch (Standard path)
     token = os.environ.get("COURIER_PAT")
     courier_owner = os.environ.get("COURIER_OWNER")
     missing = [
